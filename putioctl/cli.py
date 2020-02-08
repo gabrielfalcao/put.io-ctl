@@ -6,11 +6,10 @@ import logging
 from inquirer.shortcuts import confirm
 from itertools import chain
 from putioctl import version
-from fnmatch import fnmatch
 
 # from putioctl.logs import set_debug_mode
 from putioctl.api.client import PutIOClient
-from putioctl.api.models import Transfer, File
+from putioctl.api.models import Transfer
 from putioctl.logs import set_log_level_by_name
 from putioctl.logs import install
 
@@ -21,7 +20,8 @@ level_choices = click.Choice(
     ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
 )
 
-TOKEN = os.getenv("PUTIO_CTL_TOKEN")
+ENV_VAR_TOKEN = "PUTIO_CTL_TOKEN"
+TOKEN = os.getenv(ENV_VAR_TOKEN)
 
 
 @click.group()
@@ -35,7 +35,7 @@ def main(ctx, loglevel, token):
 
     if not token:
         raise RuntimeError(
-            'please pass a --token argument with a valid put.io access token'
+            f"please set the env var {ENV_VAR_TOKEN} or pass a --token option with a valid put.io access token"
         )
     ctx.obj = PutIOClient(token)
 
