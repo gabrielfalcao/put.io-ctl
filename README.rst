@@ -70,11 +70,11 @@ Requires parent id to be passed, use ``0`` for root and ``all`` for all files ma
 
 .. code:: bash
 
-   putio-ctl files 0
+   putio-ctl files 0  # root folders
 
-   putio-ctl files -1  # all files
+   putio-ctl files all # all files
 
-   putio-ctl files -f 'file_type=VIDEO' -1  # all files
+   putio-ctl files all -f 'file_type=VIDEO'  # all video files
 
 
 Get download links
@@ -84,7 +84,8 @@ Accepts multiple ids
 
 .. code:: bash
 
-   putio-ctl download 1122333 55233432 43258855
+   putio-ctl download $(putio-ctl files all -f file_type=VIDEO -f 'name=*Californication*' --only=id)
+
 
 Delete files
 ------------
