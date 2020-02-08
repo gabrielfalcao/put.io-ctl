@@ -26,7 +26,7 @@ TOKEN = os.getenv(ENV_VAR_TOKEN)
 
 @click.group()
 @click.option("--loglevel", default="INFO", type=level_choices)
-@click.option("--token", default=TOKEN)
+@click.option("--token", default=TOKEN, help=f'defaults to the value of environment variable {ENV_VAR_TOKEN}')
 @click.pass_context
 def main(ctx, loglevel, token):
     "putio-ctl command-line manager"
