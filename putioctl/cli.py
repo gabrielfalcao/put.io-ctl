@@ -21,7 +21,7 @@ level_choices = click.Choice(
     ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
 )
 
-TOKEN = os.getenv("PUTIOCTL_TOKEN")
+TOKEN = os.getenv("PUTIO_CTL_TOKEN")
 
 
 @click.group()
