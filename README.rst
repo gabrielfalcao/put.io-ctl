@@ -91,7 +91,9 @@ Delete files
 
 all files containing "XXX" in the name
 
-putio-ctl delete $(putio-ctl files all -f file_type=VIDEO -f 'name=*XXX*' --only=id)
+.. code:: bash
+
+   putio-ctl delete $(putio-ctl files all -f file_type=VIDEO -f 'name=*XXX*' --only=id)
 
 Cancel specific transfers
 -------------------------
