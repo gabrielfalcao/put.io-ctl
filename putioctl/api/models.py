@@ -16,8 +16,8 @@ class Transfer(Model):
         "human_downloaded",
         "title",
         "started_at",
-        "finished_at",
-        "created_at",
+        # "finished_at",
+        # "created_at",
     ]
 
     @property
@@ -59,7 +59,7 @@ class Transfer(Model):
 
     @property
     def title(self) -> str:
-        return self.name[:60]
+        return self.name.strip()[:40]
 
     @property
     def availability(self) -> int:

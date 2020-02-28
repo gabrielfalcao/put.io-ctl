@@ -174,7 +174,9 @@ def try_json(string: str) -> dict:
 
 
 def slugify(text: str, separator: str = "-"):
-    return re.sub(r"[^a-zA-Z0-9-]+", separator, text).strip(separator)
+    return re.sub(
+        fr"[{separator}]+", separator,
+        re.sub(r"[^a-zA-Z0-9-]+", separator, text).strip(separator))
 
 
 def ensure_datetime(value):

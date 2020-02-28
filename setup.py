@@ -42,7 +42,7 @@ setup(
         ]
     ),
     long_description=local_file("README.rst"),
-    entry_points={"console_scripts": ["putio-ctl = putioctl.cli:main"]},
+    entry_points={"console_scripts": ["putio-ctl = putioctl.cli:entrypoint"]},
     url="https://github.com/gabrielfalcao/kube-python-app-example",
     packages=find_packages(exclude=["*tests*"]),
     include_package_data=True,

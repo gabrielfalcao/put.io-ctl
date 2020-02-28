@@ -3,15 +3,17 @@ import sys
 import os
 import click
 import logging
+from pathlib import Path
 from inquirer.shortcuts import confirm
 from itertools import chain
 from putioctl import version
-
+from putioctl.libmodels import slugify
 # from putioctl.logs import set_debug_mode
-from putioctl.api.client import PutIOClient
+from putioctl.api.client import PutIOClient, ClientError
 from putioctl.api.models import Transfer
 from putioctl.logs import set_log_level_by_name
 from putioctl.logs import install
+from putioctl.app import initialize_session, Application
 
 logger = logging.getLogger("putio-ctl")
 
@@ -23,6 +25,13 @@ level_choices = click.Choice(
 ENV_VAR_TOKEN = "PUTIO_CTL_TOKEN"
 TOKEN = os.getenv(ENV_VAR_TOKEN)
 
+
+def entrypoint():
+    try:
+        return main()
+    except ClientError as e:
+        print(e)
+        raise SystemExit(1)
 
 @click.group()
 @click.option("--loglevel", default="INFO", type=level_choices)
@@ -55,20 +64,21 @@ def only_unavailable(transfer) -> bool:
 
 
 @main.command("clean")
+@click.option('-y', '--yes', help='answer yes to all questions', is_flag=True)
 @click.pass_context
-def clean(ctx):
+def clean(ctx, yes):
     "clean unavailable transfers"
 
     transfers = ctx.obj.get_transfers().filter(only_unavailable)
-    clean_transfers(ctx, transfers)
+    clean_transfers(ctx, transfers, yes=yes)
 
 
-def clean_transfers(ctx, transfers):
+def clean_transfers(ctx, transfers, yes=False):
     if transfers:
         print(transfers.format_pretty_table())
-    if transfers and confirm(
+    if transfers and (yes or confirm(
         f"Do you want to cancel all the transfers above ?", default=True
-    ):
+    )):
         canceled = Transfer.List(chain(*list(map(ctx.obj.cancel_transfers, transfers))))
         if canceled:
             print(f"canceled {len(canceled)} transfers")
@@ -76,9 +86,9 @@ def clean_transfers(ctx, transfers):
     completed = ctx.obj.get_transfers().filter_by("status", "COMPLETED")
     if completed:
         print(completed.format_pretty_table())
-    if completed and confirm(
+    if completed and (yes or confirm(
         f"Do you want to clean the completed transfers above ?", default=True
-    ):
+    )):
         cleaned = Transfer.List(chain(*list(map(ctx.obj.clean_transfers, completed))))
         if cleaned:
             print(f"cleaned {len(cleaned)} transfers")
@@ -154,8 +164,9 @@ def download(ctx, file_ids):
 
 @main.command("cancel")
 @click.argument("transfer_id")
+@click.option("-y", '--yes', is_flag=True)
 @click.pass_context
-def cancel(ctx, transfer_id):
+def cancel(ctx, transfer_id, yes):
     "clean unavailable transfers"
 
     transfers = ctx.obj.get_transfers()
@@ -166,7 +177,7 @@ def cancel(ctx, transfer_id):
     if transfers:
         print(transfers.format_pretty_table())
 
-    clean_transfers(ctx, transfers)
+    clean_transfers(ctx, transfers, yes=yes)
 
 
 @main.command("delete")
@@ -177,3 +188,63 @@ def delete(ctx, file_ids):
 
     deleted = list(map(ctx.obj.delete_files, file_ids))
     print(deleted)
+
+
+@main.command("upload")
+@click.argument("filename")
+@click.option("-p", "--parent-id", default="691629620", type=int)
+@click.pass_context
+def upload(ctx, filename, parent_id):
+    "upload a file"
+
+    path = Path(filename)
+    if not path.exists():
+        raise IOError(f'{path} does not exist')
+
+    if not path.is_file():
+        raise IOError(f'{path} is not a valid file')
+
+    transfer = ctx.obj.upload_file(
+        parent_id=parent_id,
+        name=path.name,
+        file=path.open('rb')
+    )
+    print(transfer.format_robust_table())
+
+
+@main.command("slugify")
+@click.argument("parent_id", type=int)
+@click.option('-y', '--yes', help='answer yes to all questions', is_flag=True)
+@click.pass_context
+def slugify_files_from_parent(ctx, parent_id, yes):
+    "slugify all files from a parent"
+
+    children = ctx.obj.get_files(parent_id=parent_id)
+    for child in children:
+        if child.file_type == 'FOLDER':
+            print(f'skipping folder {child.name} ({child.id})')
+            continue
+
+        name, extension = os.path.splitext(child.name)
+        new_name = slugify(name).lower()
+        if new_name == name:
+            continue
+
+        new_name = f'{new_name}{extension}'
+
+        if yes or confirm(f'rename file {child.id} to {new_name!r} ?'):
+            ctx.obj.rename_file(
+                file_id=child.id,
+                name=new_name,
+            )
+            print(f'renamed {child.id} to {new_name!r}')
+
+
+@main.command("repl")
+@click.pass_context
+def launch_repl(ctx):
+    "runs a REPL"
+
+    session = initialize_session()
+    app = Application(session, ctx.obj)
+    app.run()
