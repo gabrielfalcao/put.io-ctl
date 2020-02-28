@@ -1,17 +1,36 @@
+import os
 from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
-from pygments.lexers.sql import SqlLexer
-from putioctl.models import SessionState
 
+from putioctl.models import SessionState
+from putioctl.libmodels import slugify
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.styles import Style
+from .pyglexer import PutioLexer
 
 __cache__ = {}
+
+style = Style.from_dict(
+    {
+        "completion-menu.completion": "bg:#008888 #ffffff",
+        "completion-menu.completion.current": "bg:#00aaaa #000000",
+        "scrollbar.background": "bg:#88aaaa",
+        "scrollbar.button": "bg:#222222",
+    }
+)
+
+COMMANDS = ['ls', 'cd', 'q', 'quit', 'slugify']
 
 
 def initialize_session():
     session = __cache__.get('session')
     if not session:
-        __cache__['session'] = PromptSession(lexer=PygmentsLexer(SqlLexer))
+        __cache__['session'] = PromptSession(
+            lexer=PygmentsLexer(PutioLexer),
+            completer=WordCompleter(COMMANDS),
+            style=style,
+        )
 
     return __cache__['session']
 
@@ -52,8 +71,16 @@ class Application(object):
                 self.handle(text)
 
     def handle(self, text):
-        if text == 'q':
+        if text in ('quit', 'q'):
             return self.quit()
+        if text == 'slugify':
+            return self.slugify_files()
+
+        if text == 'cd':
+            self.stack.append(0)
+            self.state.data['current_parent_id'] = 0
+            return
+
         if text == 'ls':
             return self.list_files()
         if text.startswith('cd '):
@@ -61,14 +88,13 @@ class Application(object):
         print('You entered:', text)
 
     def change_parent(self, text):
-        self.parent_id = self.state.current_parent_id
-
         if not self.tree:
             self.refresh()
         name = text.split('cd ', 1)[-1]
 
         if name == '..':
             self.state.data['current_parent_id'] = self.stack.pop(-1)
+            self.refresh()
             return
 
         for child in self.children:
@@ -80,6 +106,7 @@ class Application(object):
             else:
                 self.state.data['current_parent_id'] = child.id
                 self.stack.append(child.id)
+                self.refresh()
                 return
 
         print(f'the folder {name!r} does not exist in the current directory')
@@ -89,16 +116,38 @@ class Application(object):
             parent_id=self.state.current_parent_id
         )
         self.tree[self.state.current_parent_id] = children
+        completion = []
         for child in children:
+            completion.append(child.name)
             if child.file_type == 'FOLDER':
+
                 if child.id not in self.tree:
                     self.tree[child.id] = []
             else:
                 self.files[child.id] = child
 
+        self.session.completer.words = COMMANDS + completion
+
     def list_files(self):
         self.refresh()
         print(self.children.format_pretty_table())
+
+    def slugify_files(self):
+        self.refresh()
+        for child in self.children:
+            name, extension = os.path.splitext(child.name)
+            new_name = slugify(name).lower()
+            if new_name == name:
+                continue
+
+            new_name = f'{new_name}{extension}'
+            self.client.rename_file(
+                file_id=child.id,
+                name=new_name,
+            )
+            print(f'renamed {child.id} to {new_name!r}')
+
+        self.list_files()
 
     def quit(self):
         self.__should_run__ = False
@@ -107,7 +156,8 @@ class Application(object):
     def save_state(self):
         self.state.update(dict(
             tree=self.tree,
-            files=self.files
+            files=self.files,
+            current_parent_id=0,
         ))
         with self.state_path.open('w') as fd:
             fd.write(self.state.to_json())
