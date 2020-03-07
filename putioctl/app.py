@@ -1,12 +1,14 @@
 import os
+import re
 from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 
 from putioctl.models import SessionState
-from putioctl.libmodels import slugify
+from putioctl.util import slugify
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
+from putioctl.api.util import clean_transfers
 from .pyglexer import PutioLexer
 
 __cache__ = {}
@@ -20,7 +22,7 @@ style = Style.from_dict(
     }
 )
 
-COMMANDS = ['ls', 'cd', 'q', 'quit', 'slugify']
+COMMANDS = ['ls', 'cd', 'q', 'quit', 'slugify', 't', 'transfers', 'clean']
 
 
 def initialize_session():
@@ -61,7 +63,7 @@ class Application(object):
     def run(self):
         while self.__should_run__:
             try:
-                text = self.session.prompt('> ')
+                text = self.session.prompt('$ ')
             except KeyboardInterrupt:
                 print('\n\rCONTROL-C')
                 break
@@ -71,26 +73,40 @@ class Application(object):
                 self.handle(text)
 
     def handle(self, text):
-        if text in ('quit', 'q'):
-            return self.quit()
-        if text == 'slugify':
-            return self.slugify_files()
-
-        if text == 'cd':
-            self.stack.append(0)
-            self.state.data['current_parent_id'] = 0
+        if not text:
             return
+        for regex, callback in self.routes:
+            match = re.search(regex, text)
+            if match:
+                return callback(**match.groupdict())
 
-        if text == 'ls':
-            return self.list_files()
-        if text.startswith('cd '):
-            return self.change_parent(text)
-        print('You entered:', text)
+        return self.handle_unknown(text)
 
-    def change_parent(self, text):
+    @property
+    def routes(self):
+        return {
+            r'^(q|quit)': self.quit,
+            r'^(slugify)': self.slugify_files,
+            r'^cd\s+(?P<name>[^/]+)': self.change_parent,
+            r'^cd$': self.cd_home,
+            r'^ls': self.list_files,
+            r'^(t|transfers)': self.list_transfers,
+            r'^(clean)': self.clean_transfers,
+        }.items()
+
+    def cd_home(self):
+        self.stack.append(0)
+        self.state.data['current_parent_id'] = 0
+        return self.refresh()
+
+    def handle_unknown(self, text):
+        print('unrecognized command:', text)
+
+    def change_parent(self, name):
+        if '/' in name:
+            import ipdb;ipdb.set_trace()
         if not self.tree:
             self.refresh()
-        name = text.split('cd ', 1)[-1]
 
         if name == '..':
             self.state.data['current_parent_id'] = self.stack.pop(-1)
@@ -131,6 +147,17 @@ class Application(object):
     def list_files(self):
         self.refresh()
         print(self.children.format_pretty_table())
+
+    def list_transfers(self):
+        self.refresh()
+        transfers = self.client.get_transfers()
+        if transfers:
+            print(transfers.format_pretty_table())
+
+    def clean_transfers(self):
+        self.refresh()
+        transfers = self.client.get_transfers()
+        clean_transfers(self.client, transfers)  #, yes=True)
 
     def slugify_files(self):
         self.refresh()

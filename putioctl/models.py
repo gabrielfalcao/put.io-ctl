@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from putioctl.libmodels import Model
+from uiclasses import Model
 
 
 class SessionState(Model):
     """contains the application state of a putioctl session"""
 
-    __visible_atttributes__ = [
+    __visible_attributes__ = [
         "tree",
         "files",
         "current_parent_id",

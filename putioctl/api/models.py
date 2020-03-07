@@ -2,13 +2,14 @@
 import pendulum
 from humanfriendly import format_size
 
-from putioctl.libmodels import Model, ensure_datetime
+from uiclasses import Model
+from putioctl.util import ensure_datetime
 
 
 class Transfer(Model):
     """wraps the responses of putio v2 API"""
 
-    __visible_atttributes__ = [
+    __visible_attributes__ = [
         "id",
         "status",
         "availability",
@@ -77,7 +78,7 @@ class Transfer(Model):
 class File(Model):
     """wraps the responses of putio v2 API"""
 
-    __visible_atttributes__ = [
+    __visible_attributes__ = [
         "id",
         "name",
         "human_size",

@@ -2,7 +2,7 @@
 import requests
 import logging
 from typing import List, IO
-from putioctl.libmodels import slugify, pretty_json
+from putioctl.util import slugify, pretty_json
 from putioctl.api.models import File, Transfer
 
 logger = logging.getLogger(__name__)

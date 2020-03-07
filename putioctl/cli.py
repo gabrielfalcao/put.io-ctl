@@ -5,16 +5,14 @@ import click
 import logging
 from pathlib import Path
 from inquirer.shortcuts import confirm
-from itertools import chain
 from putioctl import version
-from putioctl.libmodels import slugify
+from putioctl.util import slugify
 # from putioctl.logs import set_debug_mode
 from putioctl.api.client import PutIOClient, ClientError
-from putioctl.api.models import Transfer
 from putioctl.logs import set_log_level_by_name
 from putioctl.logs import install
 from putioctl.app import initialize_session, Application
-
+from putioctl.api.util import clean_transfers
 logger = logging.getLogger("putio-ctl")
 
 
@@ -32,6 +30,7 @@ def entrypoint():
     except ClientError as e:
         print(e)
         raise SystemExit(1)
+
 
 @click.group()
 @click.option("--loglevel", default="INFO", type=level_choices)
@@ -56,11 +55,14 @@ def print_version():
 
 
 def only_unavailable(transfer) -> bool:
+    # WARNING don't allow WAITING because the availability might be uncertain
     status = transfer.status.upper()
     availability = transfer.availability
-    return all((status == "DOWNLOADING", availability < 100)) or all(
-        (status == "SEEDING", availability < 100)
-    )
+    return any([
+        all((status == "DOWNLOADING", availability < 100)),
+        all((status == "SEEDING", availability < 100)),
+        # all((status == "WAITING", availability < 100)),
+    ])
 
 
 @main.command("clean")
@@ -69,29 +71,11 @@ def only_unavailable(transfer) -> bool:
 def clean(ctx, yes):
     "clean unavailable transfers"
 
-    transfers = ctx.obj.get_transfers().filter(only_unavailable)
-    clean_transfers(ctx, transfers, yes=yes)
+    all_transfers = ctx.obj.get_transfers()
+    transfers = all_transfers.filter(only_unavailable)
+    clean_transfers(ctx.obj, transfers, yes=yes)
 
-
-def clean_transfers(ctx, transfers, yes=False):
-    if transfers:
-        print(transfers.format_pretty_table())
-    if transfers and (yes or confirm(
-        f"Do you want to cancel all the transfers above ?", default=True
-    )):
-        canceled = Transfer.List(chain(*list(map(ctx.obj.cancel_transfers, transfers))))
-        if canceled:
-            print(f"canceled {len(canceled)} transfers")
-
-    completed = ctx.obj.get_transfers().filter_by("status", "COMPLETED")
-    if completed:
-        print(completed.format_pretty_table())
-    if completed and (yes or confirm(
-        f"Do you want to clean the completed transfers above ?", default=True
-    )):
-        cleaned = Transfer.List(chain(*list(map(ctx.obj.clean_transfers, completed))))
-        if cleaned:
-            print(f"cleaned {len(cleaned)} transfers")
+    print(all_transfers.filter(lambda t: t.status.upper() not in ('SEEDING', 'DOWNLOADING')).format_pretty_table())
 
 
 def validate_filters(filters) -> list:
