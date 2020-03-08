@@ -36,14 +36,12 @@ setup(
     version=read_version(),
     description="\n".join(
         [
-            "A python application consisting of "
-            "an HTTP server, ZMQ Components and "
-            "a command-line tool to help put everything together"
+            "Manage your Put.IO account"
         ]
     ),
     long_description=local_file("README.rst"),
     entry_points={"console_scripts": ["putio-ctl = putioctl.cli:entrypoint"]},
-    url="https://github.com/gabrielfalcao/kube-python-app-example",
+    url="https://github.com/gabrielfalcao/putio-ctl",
     packages=find_packages(exclude=["*tests*"]),
     include_package_data=True,
     package_data={"putioctl": ["README.rst", "*.png", "*.rst", "docs/*", "docs/*/*"]},
