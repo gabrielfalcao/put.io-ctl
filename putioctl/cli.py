@@ -3,6 +3,7 @@ import sys
 import os
 import click
 import logging
+from fnmatch import fnmatch
 from pathlib import Path
 from inquirer.shortcuts import confirm
 from putioctl import version
@@ -67,12 +68,18 @@ def only_unavailable(transfer) -> bool:
 
 @main.command("clean")
 @click.option('-y', '--yes', help='answer yes to all questions', is_flag=True)
+@click.option('--nofilter', help='remove all transfers', is_flag=True)
 @click.pass_context
-def clean(ctx, yes):
+def clean(ctx, yes, nofilter):
     "clean unavailable transfers"
 
     all_transfers = ctx.obj.get_transfers()
-    transfers = all_transfers.filter(only_unavailable)
+
+    if nofilter:
+        transfers = all_transfers
+    else:
+        transfers = all_transfers.filter(only_unavailable)
+
     clean_transfers(ctx.obj, transfers, yes=yes)
 
     print(all_transfers.filter(lambda t: t.status.upper() not in ('SEEDING', 'DOWNLOADING')).format_pretty_table())
@@ -83,7 +90,7 @@ def validate_filters(filters) -> list:
     for part in filters:
         if part.count("="):
             key, value = part.split("=", 1)
-            result.append(lambda i: i.attribute_matches_glob(key, value))
+            result.append(lambda i: fnmatch(str(i[key] or '').lower(), value.lower()))
         elif part.count("<"):
             key, value = part.split("<", 1)
             result.append(lambda i: int(getattr(i, key)) < int(value))
@@ -117,8 +124,9 @@ def transfers(ctx, filter_by):
 @click.argument("parent_id", default=None)
 @click.option("-f", "--filter-by", multiple=True)
 @click.option("--only", default=None)
+@click.option('--delete', help='delete matching files', is_flag=True)
 @click.pass_context
-def files(ctx, parent_id, filter_by, only):
+def files(ctx, parent_id, filter_by, only, delete):
     "list files"
 
     if parent_id == "all":
@@ -128,8 +136,12 @@ def files(ctx, parent_id, filter_by, only):
     filters = validate_filters(filter_by)
     for func in filters:
         files = files.filter(func)
+    if delete:
+        for file in files:
+            ctx.obj.delete_files([file.id])
+            print(f'Deleted {file.human_size}: {file.name}')
 
-    if only:
+    elif only:
         [print(getattr(i, only)) for i in files]
     else:
         print(files.sorted_by("size").format_pretty_table())

@@ -9,17 +9,13 @@ from putioctl.util import ensure_datetime
 class Transfer(Model):
     """wraps the responses of putio v2 API"""
 
-    __visible_attributes__ = [
-        "id",
-        "status",
-        "availability",
-        "human_size",
-        "human_downloaded",
-        "title",
-        "started_at",
-        # "finished_at",
-        # "created_at",
-    ]
+    id: int
+    status: str
+    availability: str
+    human_size: str
+    human_downloaded: str
+    title: str
+    started_at: str
 
     @property
     def created_at(self):
@@ -78,18 +74,16 @@ class Transfer(Model):
 class File(Model):
     """wraps the responses of putio v2 API"""
 
-    __visible_attributes__ = [
-        "id",
-        "name",
-        "human_size",
-        # "parent_id",
-        # "created_at_human",
-        # "updated_at_human",
-        # "file_type",
-        # "is_mp4_available",
-        # "is_shared",
-        # "is_hidden",
-    ]
+    id: int
+    name: str
+    human_size: str
+    # parent_id: int
+    # created_at_human: str
+    # updated_at_human: str
+    # file_type: str
+    # is_mp4_available: str
+    # is_shared: str
+    # is_hidden: str
 
     @property
     def created_at(self):

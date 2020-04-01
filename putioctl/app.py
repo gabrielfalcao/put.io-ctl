@@ -104,7 +104,8 @@ class Application(object):
 
     def change_parent(self, name):
         if '/' in name:
-            import ipdb;ipdb.set_trace()
+            raise NotImplementedError("don't support changing by path for now")
+
         if not self.tree:
             self.refresh()
 
