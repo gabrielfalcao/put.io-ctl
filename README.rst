@@ -90,7 +90,14 @@ Accepts multiple ids
 Delete files
 ------------
 
-all files containing "XXX" in the name
+All files containing "XXX" in the name
+
+.. code:: bash
+
+
+   putio-ctl files all -f file_type=VIDEO -f 'name=*XXX*' --delete
+
+Which is just a nicer way to do this:
 
 .. code:: bash
 
