@@ -42,7 +42,9 @@ class PutIOClient(object):
     def get_transfers(self) -> List[Transfer]:
         response = self.http.get(self.url("/transfers/list"))
         data = response.json()
-        transfers = data.get("transfers")
+        transfers = data.get("transfers") or []
+        if not transfers:
+            logger.warning(f"no transfers returned in {data}")
         return Transfer.List(transfers).sorted_by("status")
 
     def cancel_transfers(self, *transfers: List[Transfer]):

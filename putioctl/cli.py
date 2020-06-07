@@ -24,6 +24,10 @@ level_choices = click.Choice(
 ENV_VAR_TOKEN = "PUTIO_CTL_TOKEN"
 TOKEN = os.getenv(ENV_VAR_TOKEN)
 
+if not TOKEN:
+    logger.error("missing PUTIO_CTL_TOKEN environment variable")
+    raise SystemExit(1)
+
 
 def entrypoint():
     try:
@@ -59,6 +63,8 @@ def only_unavailable(transfer) -> bool:
     # WARNING don't allow WAITING because the availability might be uncertain
     status = transfer.status.upper()
     availability = transfer.availability
+    if status == "ERROR":
+        return True
     return any([
         all((status == "DOWNLOADING", availability < 100)),
         all((status == "SEEDING", availability < 100)),

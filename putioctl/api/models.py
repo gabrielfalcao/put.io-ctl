@@ -11,7 +11,7 @@ class Transfer(Model):
 
     id: int
     status: str
-    availability: str
+    availability: int
     human_size: str
     human_downloaded: str
     title: str

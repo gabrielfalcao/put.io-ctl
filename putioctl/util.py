@@ -2,8 +2,6 @@ import re
 import json
 import pendulum
 from datetime import datetime
-from itertools import chain
-from inquirer.shortcuts import confirm
 
 
 def pretty_json(data, indent=2):

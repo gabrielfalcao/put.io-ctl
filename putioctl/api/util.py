@@ -1,5 +1,6 @@
 from putioctl.api.models import Transfer
 from itertools import chain
+from inquirer.shortcuts import confirm
 
 
 def clean_transfers(client, transfers, yes=False):
