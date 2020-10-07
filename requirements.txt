@@ -1,9 +1,10 @@
-click==7.0
+click==7.1.2
 coloredlogs==10.0
 humanfriendly>=4.18
 inquirer>=2.6
-pendulum>=2.0
+pendulum==2.1.2
 prompt-toolkit==3.0.3
-requests==2.22.0
+pygments==2.7.1
+requests==2.24.0
+uiclasses==2.3.2
 wcwidth>=0.1.8
-uiclasses>=2.2.1

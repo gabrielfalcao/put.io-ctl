@@ -1,8 +1,11 @@
 import re
 import json
+import logging
 import pendulum
+
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
 def pretty_json(data, indent=2):
     """serializes the given data into JSON with indentation"""
@@ -16,11 +19,13 @@ def slugify(text: str, separator: str = "-"):
 
 
 def ensure_datetime(value):
-    if isinstance(value, str):
-        return pendulum.parse(value)
-    if isinstance(value, datetime):
-        return pendulum.instance(value)
-    if isinstance(value, pendulum.DateTime):
-        return value
-
+    try:
+        if isinstance(value, str):
+            return pendulum.parse(value, strict=False)
+        if isinstance(value, datetime):
+            return pendulum.instance(value)
+        if isinstance(value, pendulum.DateTime):
+            return value
+    except Exception as e:
+        logger.debug(f'failed to parse datetime from {value!r}: {e}')
     return value
