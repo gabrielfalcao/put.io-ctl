@@ -13,6 +13,7 @@ from putioctl.api.client import PutIOClient, ClientError
 from putioctl.logs import set_log_level_by_name
 from putioctl.logs import install
 from putioctl.app import initialize_session, Application
+from putioctl.api.models import Transfer
 from putioctl.api.util import clean_transfers
 logger = logging.getLogger("putio-ctl")
 
@@ -73,10 +74,11 @@ def only_unavailable(transfer) -> bool:
 
 
 @main.command("clean")
+@click.option('-q', '--quiet', help='disable verbosity', is_flag=True)
 @click.option('-y', '--yes', help='answer yes to all questions', is_flag=True)
 @click.option('--nofilter', help='remove all transfers', is_flag=True)
 @click.pass_context
-def clean(ctx, yes, nofilter):
+def clean(ctx, yes, nofilter, quiet):
     "clean unavailable transfers"
 
     all_transfers = ctx.obj.get_transfers()
@@ -86,9 +88,11 @@ def clean(ctx, yes, nofilter):
     else:
         transfers = all_transfers.filter(only_unavailable)
 
-    clean_transfers(ctx.obj, transfers, yes=yes)
+    clean_transfers(ctx.obj, transfers, yes=yes, quiet=quiet)
 
-    print(all_transfers.filter(lambda t: t.status.upper() not in ('SEEDING', 'DOWNLOADING')).format_pretty_table())
+    remaining_transfers = all_transfers.filter(lambda t: t.status.upper() not in ('SEEDING', 'DOWNLOADING')).format_pretty_table()
+    if not quiet:
+        print(remaining_transfers)
 
 
 def validate_filters(filters) -> list:
@@ -108,11 +112,26 @@ def validate_filters(filters) -> list:
 
     return result
 
+def validate_sorts(sorts, Model) -> list:
+    kwargs_list = []
+    for part in sorts:
+        reverse = part.startswith('-')
+        attr = reverse and part[1:] or part
+        if not hasattr(Model, attr):
+            raise RuntimeError(f"invalid attribute {Model.__name__}.{attr!r}")
+
+        kwargs_list.append({
+            'key': lambda x: getattr(x, attr),
+            'reverse': reverse
+        })
+    return kwargs_list
+
 
 @main.command("transfers")
 @click.option("-f", "--filter-by", multiple=True)
+@click.option("-s", "--sort-by", multiple=True)
 @click.pass_context
-def transfers(ctx, filter_by):
+def transfers(ctx, filter_by, sort_by):
     "list transfers"
 
     transfers = ctx.obj.get_transfers()
@@ -120,6 +139,10 @@ def transfers(ctx, filter_by):
     filters = validate_filters(filter_by)
     for func in filters:
         transfers = transfers.filter(func)
+
+    sorts = validate_sorts(sort_by, Transfer)
+    for kwargs in sorts:
+        transfers = transfers.sorted(**kwargs)
 
     print(transfers.format_pretty_table())
     # if transfers:
@@ -129,10 +152,11 @@ def transfers(ctx, filter_by):
 @main.command("files")
 @click.argument("parent_id", default=None)
 @click.option("-f", "--filter-by", multiple=True)
+@click.option("-s", "--sort-by", multiple=True)
 @click.option("--only", default=None)
 @click.option('--delete', help='delete matching files', is_flag=True)
 @click.pass_context
-def files(ctx, parent_id, filter_by, only, delete):
+def files(ctx, parent_id, filter_by, sort_by, only, delete):
     "list files"
 
     if parent_id == "all":
@@ -142,6 +166,11 @@ def files(ctx, parent_id, filter_by, only, delete):
     filters = validate_filters(filter_by)
     for func in filters:
         files = files.filter(func)
+
+    sorts = validate_sorts(sort_by)
+    for kwargs in sorts:
+        files = files.sorted(**kwargs)
+
     if delete:
         for file in files:
             ctx.obj.delete_files([file.id])

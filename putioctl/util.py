@@ -29,3 +29,10 @@ def ensure_datetime(value):
     except Exception as e:
         logger.debug(f'failed to parse datetime from {value!r}: {e}')
     return value
+
+
+
+def terminal_log(*args, **kw):
+    quiet = kw.pop('quiet', False)
+    if not quiet:
+        print(*args, **kw)
