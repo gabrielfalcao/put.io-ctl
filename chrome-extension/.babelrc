@@ -1,0 +1,7 @@
+{
+  "presets": ["babel-preset-kyt-react"],
+  "plugins": [
+    "react-hot-loader/babel",
+    "@babel/plugin-proposal-class-properties"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "put.io extension",
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "options_page": "options.html",
+  "background": {
+    "page": "background.html"
+  },
+  "browser_action": {
+    "default_icon": "icon-34.png",
+    "default_popup": "popup.html"
+  },
+
+  "devtools_page": "devtools.html",
+
+  "content_scripts": [
+    {
+      "matches": ["https://put.io/*", "https://*.put.io/*"],
+      "css": [],
+      "js": ["content_script.bundle.js"],
+      "match_about_blank": false,
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "permissions": [
+    "https://put.io/*",
+    "https://*.put.io/*",
+    "clipboardWrite",
+    "clipboardRead",
+    "tabs",
+    "activeTab",
+    "history",
+    "downloads",
+    "storage",
+    "management",
+    "webRequest",
+    "declarativeContent"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}
